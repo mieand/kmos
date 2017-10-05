@@ -83,13 +83,6 @@ usage['export'] = """kmos export <xml-file> [<export-path>]
             lat_int is EXPERIMENTAL and not made
             for production, yet.
 
-        -t/--temp_acc
-            Use temporal acceleration scheme.
-            Builds the modules base_acc.f90, lattice_acc.mpy, 
-            proclist_constants_acc.mpy and 
-            proclist_generic_subroutines_acc.mpy.
-            Default is false.
-
         -d/--debug
             Turn on assertion statements in F90 code.
             (Only active in compile step)
@@ -213,11 +206,6 @@ def get_options(args=None, get_parser=False):
                       default=False,
                       action='store_true')
     
-    parser.add_option('-t', '--temp_acc',
-                      default=False,
-                      dest='temp_acc',
-                      action='store_true')
-    
     parser.add_option('--acf',
                       dest='acf',
                       action='store_true',
@@ -292,37 +280,17 @@ def main(args=None):
         from time import time
         from kmos.run import KMC_Model
         model = KMC_Model(print_rates=False, banner=False)
-        accelerated = model.can_accelerate
-        if not accelerated:
-            time0 = time()
-            try:
-                model.proclist.do_kmc_steps(nsteps)
-            except:  # kmos < 0.3 had no model.proclist.do_kmc_steps
-                model.do_steps(nsteps)
-
-            needed_time = time() - time0
-            print('Using the [%s] backend.' % model.get_backend())
-            print('%s steps took %.2f seconds' % (nsteps, needed_time))
-            print('Or %.2e steps/s' % (1e6 / needed_time))
-            model.deallocate()
-        else:
-            time0 = time()
+        time0 = time()
+        try:
+            model.proclist.do_kmc_steps(nsteps)
+        except:  # kmos < 0.3 had no model.proclist.do_kmc_steps
             model.do_steps(nsteps)
-            needed_time = time() - time0
-            print('Using the [%s] backend.' % model.get_backend())
-            print('Using the temporal acceleration scheme')
-            print('%s normal steps took %.2f seconds' % (nsteps, needed_time))
-            print('Or %.2e steps/s' % (1e6 / needed_time))
-            print('')
-            model.deallocate()
-            model = KMC_Model(print_rates=False, banner=False)
-            time0 = time()
-            model.do_acc_steps(nsteps)
-            needed_time = time() - time0
-            print('%s accelerated steps took %.2f seconds' % (nsteps, needed_time))
-            print('Or %.2e steps/s' % (1e6 / needed_time))
-            model.deallocate()
 
+        needed_time = time() - time0
+        print('Using the [%s] backend.' % model.get_backend())
+        print('%s steps took %.2f seconds' % (nsteps, needed_time))
+        print('Or %.2e steps/s' % (1e6 / needed_time))
+        model.deallocate()
     elif args[0] == 'build':
         from kmos.utils import build
         build(options)
@@ -371,8 +339,7 @@ def main(args=None):
 
         kmos.io.export_source(project,
                               export_dir,
-                              options=options,
-                              accelerated=options.temp_acc)
+                              options=options)
 
         if ((os.name == 'posix'
            and os.uname()[0] in ['Linux', 'Darwin'])
